@@ -46,7 +46,7 @@ class Spider:
 
         self.driver = driver
 
-    def get_current_html(self, url, clicks, target):
+    def get_current_html(self, url, clicks, target, html_or_content='content'):
         # load page
         self.driver.get(url)
 
@@ -65,11 +65,12 @@ class Spider:
             EC.presence_of_element_located((By.XPATH, target))
         )
 
-        # more accurate, but problematic due to js content etc.
-        # html = element.get_attribute('innerHTML')
-
-        # more reliable:
-        html = element.text
+        if html_or_content == 'html':
+            # more accurate, but problematic due to js content etc.
+            html = element.get_attribute('innerHTML')
+        else:
+            # more reliable:
+            html = element.text
 
         return html
 
@@ -95,6 +96,8 @@ def parse_pings(ping_file):
                 actions = actions.split(';')
             if target.startswith('#'):
                 target = TARGET_MACROS[target]
+            elif target == '':
+                target = '//body'
 
             ping = (url, actions, target)
             pings.append(ping)
@@ -107,6 +110,7 @@ def main():
     parser = argparse.ArgumentParser(description='Crawl a number of sites and compare them to a previous known state.')
     parser.add_argument('--show_driver', action='store_true', default=False, help='Disables headless mode for webdriver.')
     parser.add_argument('--no_notify', action='store_false', default=True, help='Disable toast notifications.')
+    parser.add_argument('--html_or_content', choices=['html', 'content'], default='content', help='Whether to compare html or content.')
     args = parser.parse_args()
 
     # read pings
@@ -125,9 +129,9 @@ def main():
     spider = Spider(headless=(not args.show_driver))
 
     stuff_changed = False
-    changes = []
+    changes = {}
     for url, clicks, target in tqdm(pings):
-        current_content = spider.get_current_html(url, clicks, target)
+        current_content = spider.get_current_html(url, clicks, target, args.html_or_content)
         if current_content is None:
             print(f'Retrieving html failed for: {url}')
         elif previous_htmls[url]['html'] is not None \
@@ -158,7 +162,7 @@ def main():
         n.show_toast("ProjectPing", "Changes detected, click for report", duration=20,
                      icon_path="./assets/spider.ico")
 
-        # write current htmls as new previous
+    # write current htmls as new previous
     with open('./previous.pickle', 'wb') as out:
         pickle.dump(dict(previous_htmls), out)
 
