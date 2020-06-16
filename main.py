@@ -1,16 +1,20 @@
+import argparse
+import datetime
 import pickle
 import os
 import sys
 from pathlib import Path
 from collections import defaultdict
 
-from tqdm import tqdm
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException
+from tqdm import tqdm
+from win10toast import ToastNotifier
 
 
 CLICK_MACROS = {
@@ -99,28 +103,62 @@ def parse_pings(ping_file):
 
 
 def main():
+    # parse args
+    parser = argparse.ArgumentParser(description='Crawl a number of sites and compare them to a previous known state.')
+    parser.add_argument('--show_driver', action='store_true', default=False, help='Disables headless mode for webdriver.')
+    parser.add_argument('--no_notify', action='store_false', default=True, help='Disable toast notifications.')
+    args = parser.parse_args()
+
     # read pings
     pings = parse_pings('./pings.txt')
 
-    previous_htmls = defaultdict(lambda: '')
+    previous_htmls = defaultdict(lambda: {
+        'time': None,
+        'html': ''
+    })
 
     # read previous htmls
     if os.path.isfile('./previous.pickle'):
         with open('./previous.pickle', 'rb') as inf:
             previous_htmls.update(pickle.load(inf))
 
-    spider = Spider(headless=True)
+    spider = Spider(headless=(not args.show_driver))
 
+    stuff_changed = False
+    changes = []
     for url, clicks, target in tqdm(pings):
-
-        current = spider.get_current_html(url, clicks, target)
-        if current is None:
+        current_content = spider.get_current_html(url, clicks, target)
+        if current_content is None:
             print(f'Retrieving html failed for: {url}')
-        elif current != previous_htmls[url]:
-            print(f'Updated: {url}')
-            previous_htmls[url] = current
+        elif previous_htmls[url]['html'] is not None \
+                and current_content != previous_htmls[url]['html']:
+            print(f'Changed: {url}')
 
-    # write current htmls as new previous
+            stuff_changed = True
+
+            # save differences
+            changes[url] = {
+                'previous_time': previous_htmls[url]['time'],
+                'previous_html': previous_htmls[url]['html'],
+                'current_time': datetime.datetime.now(),
+                'current_html': current_content
+            }
+
+            # update previous
+            previous_htmls[url]['html'] = current_content
+            previous_htmls[url]['time'] = datetime.datetime.now()
+
+    # write change report
+    for change in changes:
+        pass
+
+    if not args.no_notify and stuff_changed:
+        # create an object to ToastNotifier class
+        n = ToastNotifier()
+        n.show_toast("ProjectPing", "Changes detected, click for report", duration=20,
+                     icon_path="./assets/spider.ico")
+
+        # write current htmls as new previous
     with open('./previous.pickle', 'wb') as out:
         pickle.dump(dict(previous_htmls), out)
 
