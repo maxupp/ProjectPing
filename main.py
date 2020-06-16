@@ -30,6 +30,8 @@ class Spider:
         if headless:
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--silent")
+            chrome_options.add_argument("--log-level=3")
 
         try:
             driver = webdriver.Chrome(options=chrome_options)

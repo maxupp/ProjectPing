@@ -8,8 +8,11 @@ Python-Requirements:
 
     * selenium
     * tqdm
+    * win10toast
 
-It's recommended to create an Anaconda environment using the supplied `environmet.yml`.
+Create an Anaconda environment using the supplied `environment.yml`:
+
+    conda env create --name project_ping -f environment.yml
 
 Additional requirements:
  * Chrome installation
