@@ -111,7 +111,7 @@ def main():
     # parse args
     parser = argparse.ArgumentParser(description='Crawl a number of sites and compare them to a previous known state.')
     parser.add_argument('--show_driver', action='store_true', default=False, help='Disables headless mode for webdriver.')
-    parser.add_argument('--no_notify', action='store_false', default=True, help='Disable toast notifications.')
+    parser.add_argument('--no_notify', action='store_true', default=False, help='Disable toast notifications.')
     parser.add_argument('--html_or_content', choices=['html', 'content'], default='content', help='Whether to compare html or content.')
     args = parser.parse_args()
 
@@ -131,37 +131,42 @@ def main():
     spider = Spider(headless=(not args.show_driver))
 
     stuff_changed = False
-    changes = {}
+    changes = []
     for url, clicks, target in tqdm(pings):
         current_content = spider.get_current_html(url, clicks, target, args.html_or_content)
         if current_content is None:
-            print(f'Retrieving html failed for: {url}')
+            tqdm.write(f'Retrieving html failed for: {url}')
         elif previous_htmls[url]['html'] is not None \
                 and current_content != previous_htmls[url]['html']:
-            print(f'Changed: {url}')
+            tqdm.write(f'Changed: {url}')
 
             stuff_changed = True
 
             # save differences
-            changes[url] = {
+            changes.append({
+                'url': url,
                 'previous_time': previous_htmls[url]['time'],
-                'previous_html': previous_htmls[url]['html'],
+                'previous_html': ' '.join(previous_htmls[url]['html'].split()),
                 'current_time': datetime.datetime.now(),
-                'current_html': current_content
-            }
+                'current_html': ' '.join(current_content.split())
+            })
 
             # update previous
             previous_htmls[url]['html'] = current_content
             previous_htmls[url]['time'] = datetime.datetime.now()
 
     # write change report
-    for change in changes:
-        pass
+    with open('./updates.log', 'w+', encoding='utf-8') as out:
+        for change in changes:
+            out.write(f'{change["current_time"]}, URL {change["url"]}:\n')
+            out.write(f'\tBefore:\t{change["previous_html"]}\n')
+            out.write(f'\tAfter:\t {change["current_html"]}\n')
+            out.write('----------------------------------------------\n')
 
     if not args.no_notify and stuff_changed:
         # create an object to ToastNotifier class
         n = ToastNotifier()
-        n.show_toast("ProjectPing", "Changes detected, click for report", duration=20,
+        n.show_toast("ProjectPing", f"{len(changes)} change(s) detected. Check log for details.", duration=20,
                      icon_path="./assets/spider.ico")
 
     # write current htmls as new previous

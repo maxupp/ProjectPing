@@ -64,3 +64,10 @@ TARGET_MACROS = {
 }
 ~~~
 In this case the actions functionality is used to modify the list order before grabbing the first element.
+
+### Change detection logging
+By default changes to the content of the specified target are logged in readable format in `updates.log`.
+
+### TODO:
+* Separate Macro definitions from main.py
+* Make clicks on the notification open updates.log.
