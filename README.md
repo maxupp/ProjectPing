@@ -33,7 +33,7 @@ Each entry consists of three `|`-separated entries, which represent in order;
     1. The URL of the observed site.
     2. A list of XPaths to be clicked before grabbing the content, separated by semicolons.
     3. The XPath to the element used for the actual comparison.
-To execute, simpy run:
+To execute, simpy run the included `projectping.bat` or directly via python:
 ~~~
 python main.py
 ~~~
