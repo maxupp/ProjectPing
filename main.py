@@ -4,6 +4,7 @@ import pickle
 import os
 import sys
 from pathlib import Path
+import platform
 from collections import defaultdict
 
 
@@ -128,12 +129,22 @@ def main():
         with open('./previous.pickle', 'rb') as inf:
             previous_htmls.update(pickle.load(inf))
 
+    # store new htmls separately in order to discard no longer tracked sites
+    new_previous_htmls = defaultdict(lambda: {
+        'time': None,
+        'html': ''
+    })
+
     spider = Spider(headless=(not args.show_driver))
 
     stuff_changed = False
     changes = []
     for url, clicks, target in tqdm(pings):
         current_content = spider.get_current_html(url, clicks, target, args.html_or_content)
+        # update previous
+        new_previous_htmls[url]['html'] = current_content
+        new_previous_htmls[url]['time'] = datetime.datetime.now()
+
         if current_content is None:
             tqdm.write(f'Retrieving html failed for: {url}')
         elif previous_htmls[url]['html'] is not None \
@@ -151,10 +162,6 @@ def main():
                 'current_html': ' '.join(current_content.split())
             })
 
-            # update previous
-            previous_htmls[url]['html'] = current_content
-            previous_htmls[url]['time'] = datetime.datetime.now()
-
     # write change report
     with open('./updates.log', 'w+', encoding='utf-8') as out:
         for change in changes:
@@ -163,15 +170,15 @@ def main():
             out.write(f'\tAfter:\t {change["current_html"]}\n')
             out.write('----------------------------------------------\n')
 
-    if not args.no_notify and stuff_changed:
+    if not args.no_notify and stuff_changed and platform.system() == 'Windows':
         # create an object to ToastNotifier class
         n = ToastNotifier()
-        n.show_toast("ProjectPing", f"{len(changes)} change(s) detected. Check log for details.", duration=20,
+        n.show_toast("ProjectPing", f"{len(changes)} change(s) detected. Check log for details.", duration=5,
                      icon_path="./assets/spider.ico")
 
     # write current htmls as new previous
     with open('./previous.pickle', 'wb') as out:
-        pickle.dump(dict(previous_htmls), out)
+        pickle.dump(dict(new_previous_htmls), out)
 
 
 if __name__ == '__main__':
