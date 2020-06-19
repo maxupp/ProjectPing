@@ -163,7 +163,7 @@ def main():
             })
 
     # write change report
-    with open('./updates.log', 'w+', encoding='utf-8') as out:
+    with open('./updates.log', 'a+', encoding='utf-8') as out:
         for change in changes:
             out.write(f'{change["current_time"]}, URL {change["url"]}:\n')
             out.write(f'\tBefore:\t{change["previous_html"]}\n')
