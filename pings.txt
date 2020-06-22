@@ -1,1 +1,2 @@
-https://www.ebay-kleinanzeigen.de/s-katzen/c136||//*[@id="srchrslt-adtable"]/li[1]
+# URL | optional ";"-separated element-xpaths to click | target-xpath | optional ";"-separated trigger strings
+https://www.ebay-kleinanzeigen.de/s-katzen/c136||//*[@id="srchrslt-adtable"]/li[1]|
