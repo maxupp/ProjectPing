@@ -25,6 +25,7 @@ TARGET_MACROS = {
 }
 
 
+
 class Spider:
     def __init__(self, headless=True):
         chrome_options = Options()
@@ -55,12 +56,9 @@ class Spider:
 
         # perform actions
         for click in clicks:
-            try:
-                element = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, click))
-                )
-            except Exception:
-                return None
+            element = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, click))
+            )
             element.click()
 
         # get html
@@ -87,9 +85,12 @@ def parse_pings(ping_file):
 
     with open(ping_file)as inf:
         for line in inf.readlines():
-            if line.strip() == '':
+            if line.strip() == '' or line.startswith('#'):
                 continue
-            url, actions, target = [x.strip() for x in line.split('|')]
+            url, actions, target, triggers = [x.strip() for x in line.split('|')]
+            triggers = triggers.split(';')
+            triggers = [x.strip() for x in triggers]
+
             if actions.startswith('#'):
                 actions = CLICK_MACROS[actions]
             elif actions == '':
@@ -102,7 +103,7 @@ def parse_pings(ping_file):
             elif target == '':
                 target = '//body'
 
-            ping = (url, actions, target)
+            ping = (url, actions, target, triggers)
             pings.append(ping)
 
     return pings
@@ -139,16 +140,23 @@ def main():
 
     stuff_changed = False
     changes = []
-    for url, clicks, target in tqdm(pings):
-        current_content = spider.get_current_html(url, clicks, target, args.html_or_content)
-        # update previous
+    for url, clicks, target, triggers in tqdm(pings):
+        try:
+            current_content = spider.get_current_html(url, clicks, target, args.html_or_content)
+        except Exception:
+            tqdm.write(f'Retrieving html failed for: {url}')
+
+        # do nothing if not of the given triggers are fired
+        if len(triggers) > 0 and not any([x in current_content for x in triggers]):
+            continue
+
+        # store "new previous"
         new_previous_htmls[url]['html'] = current_content
         new_previous_htmls[url]['time'] = datetime.datetime.now()
 
-        if current_content is None:
-            tqdm.write(f'Retrieving html failed for: {url}')
-        elif previous_htmls[url]['html'] is not None \
-                and current_content != previous_htmls[url]['html']:
+        if previous_htmls[url]['html'] is not None \
+            and current_content is not None \
+            and current_content != previous_htmls[url]['html']:
             tqdm.write(f'Changed: {url}')
 
             stuff_changed = True
@@ -165,7 +173,7 @@ def main():
     # write change report
     with open('./updates.log', 'a+', encoding='utf-8') as out:
         for change in changes:
-            out.write(f'{change["current_time"]}, URL {change["url"]}:\n')
+            out.write(f'{change["current_time"]}, URL {change["url"]}\n')
             out.write(f'\tBefore:\t{change["previous_html"]}\n')
             out.write(f'\tAfter:\t {change["current_html"]}\n')
             out.write('----------------------------------------------\n')

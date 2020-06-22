@@ -26,13 +26,14 @@ The supplied chromedriver corresponds to Chrome v83. Replace with correct versio
 
 Insert any websites you want to observe into `pings.txt` with the following formatting:
 ~~~
-https://www.ebay-kleinanzeigen.de/s-katzen/c136 | | //*[@id="srchrslt-adtable"]/li[1]
+https://www.ebay-kleinanzeigen.de/s-katzen/c136 | | //*[@id="srchrslt-adtable"]/li[1]|Maine Coone;Anubis
 ~~~
-Each entry consists of three `|`-separated entries, which represent in order; 
+Each entry consists of four `|`-separated entries, which represent in order; 
     
     1. The URL of the observed site.
-    2. A list of XPaths to be clicked before grabbing the content, separated by semicolons.
+    2. An optional list of XPaths to be clicked before grabbing the content, separated by semicolons.
     3. The XPath to the element used for the actual comparison.
+    4. An optional list of trigger hotwords. If supplied any posts without at least one hotword will be ignored.
 To execute, simpy run the included `projectping.bat` or directly via python:
 ~~~
 python main.py
@@ -70,4 +71,4 @@ By default changes to the content of the specified target are logged in readable
 
 ### TODO:
 * Separate Macro definitions from main.py
-* Make clicks on the notification open updates.log.
+* Make clicks on the notification open updates.log (currently not possible using win10toast, although there is a pull request for it)
